@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import cv2
 import numpy as np
 import io
+import base64
 
 app = Flask(__name__)
 
@@ -22,11 +23,19 @@ def home():
 
 
 # Video işleme endpoint'i
-@app.route('/process-video', methods=['POST'])
+app.route('/process-video', methods=['POST'])
 def process_video():
     try:
-        file = request.files['video']
-        video_stream = io.BytesIO(file.read())
+        # JSON verisinden video verisini al
+        data = request.json
+        video_data = data.get('video')
+
+        if not video_data:
+            return jsonify({"error": "No video data provided"}), 400
+        
+        # Base64'ten video verisini çözümle
+        video_bytes = base64.b64decode(video_data)
+        video_stream = io.BytesIO(video_bytes)
         video_stream.seek(0)
         
         # OpenCV ile video açma
