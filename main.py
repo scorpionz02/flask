@@ -20,6 +20,7 @@ def calculate_heart_rate(intensity_changes, fps):
 def home():
     return "Kalp atış hızı ölçümü için /process-video endpoint'ini kullanın."
 
+
 # Video işleme endpoint'i
 @app.route('/process-video', methods=['POST'])
 def process_video():
@@ -55,4 +56,4 @@ def process_video():
         return jsonify({"error": "Video işlenemedi"}), 500
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(port=8080)
