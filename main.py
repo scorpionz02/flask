@@ -23,7 +23,7 @@ def home():
 
 
 # Video işleme endpoint'i
-app.route('/process-video', methods=['POST'])
+@app.route('/process-video', methods=['POST'])
 def process_video():
     try:
         # JSON verisinden video verisini al
