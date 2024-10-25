@@ -16,6 +16,10 @@ def calculate_heart_rate(intensity_changes, fps):
     heart_rate = (peaks / seconds) * 60
     return heart_rate
 
+@app.route('/', methods=['GET'])
+def home():
+    return "Kalp atış hızı ölçümü için /process-video endpoint'ini kullanın."
+
 # Video işleme endpoint'i
 @app.route('/process-video', methods=['POST'])
 def process_video():
