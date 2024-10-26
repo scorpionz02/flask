@@ -3,26 +3,16 @@ import cv2
 import numpy as np
 import io
 import base64
+import tempfile
+import os
+from sigMain import sigMain  # sigMain fonksiyonunu içe aktar
 
 app = Flask(__name__)
-
-# Ortalama kalp atış hızını hesaplayan fonksiyon
-def calculate_heart_rate(intensity_changes, fps):
-    peaks = 0
-    for i in range(1, len(intensity_changes) - 1):
-        if intensity_changes[i] > intensity_changes[i - 1] and intensity_changes[i] > intensity_changes[i + 1]:
-            peaks += 1
-
-    seconds = len(intensity_changes) / fps
-    heart_rate = (peaks / seconds) * 60
-    return heart_rate
 
 @app.route('/', methods=['GET'])
 def home():
     return "Kalp atış hızı ölçümü için /process-video endpoint'ini kullanın."
 
-
-# Video işleme endpoint'i
 @app.route('/process-video', methods=['POST'])
 def process_video():
     try:
@@ -35,34 +25,51 @@ def process_video():
         
         # Base64'ten video verisini çözümle
         video_bytes = base64.b64decode(video_data)
-        video_stream = io.BytesIO(video_bytes)
-        video_stream.seek(0)
+        
+        # Geçici bir dosya oluştur
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_video_file:
+            temp_video_file.write(video_bytes)
+            temp_video_file_path = temp_video_file.name
         
         # OpenCV ile video açma
-        cap = cv2.VideoCapture(video_stream)
+        cap = cv2.VideoCapture(temp_video_file_path)
+        
+        # Toplam kare sayısını ve FPS'yi al
+        total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         fps = cap.get(cv2.CAP_PROP_FPS)
+        print("Total frames:", total_frames)
+        print("FPS:", fps)
+        duration = total_frames / fps
+        ret = True
         
-        intensity_changes = []
+        hsv_v_values = []
         
-        while cap.isOpened():
+        while ret:
             ret, frame = cap.read()
             if not ret:
                 break
             
-            # Her kareyi griye dönüştürüp ışık seviyesini hesapla
-            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            avg_intensity = np.mean(gray_frame)
-            intensity_changes.append(avg_intensity)
-        
+            # Her kareyi HSV renk alanına dönüştür
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            hsv_values = hsv[:,:,2]
+            mean_hsv_value = np.mean(hsv_values)
+            hsv_v_values.append(mean_hsv_value)
+
         cap.release()
         
-        # Kalp atış hızını hesapla
-        heart_rate = calculate_heart_rate(intensity_changes, fps)
-        return jsonify({"heartRate": heart_rate})
+        # Kalp atış hızını ve HRV'yi hesapla
+        HRV = sigMain(hsv_v_values, duration)
+        print("HRV:", HRV)
+
+        # Geçici dosyayı sil
+        os.remove(temp_video_file_path)
+
+        return jsonify({"heartRate": HRV})
     
     except Exception as e:
         print("Hata:", e)
         return jsonify({"error": "Video işlenemedi"}), 500
 
+
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(port=5000, host='192.168.1.103')
